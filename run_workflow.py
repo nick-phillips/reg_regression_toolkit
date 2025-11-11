@@ -24,11 +24,15 @@ from reg_regression_toolkit.workflow import run_workflow
 
 def _default_logistic_kwargs() -> dict:
     return {
-        "Cs": [0.1, 1.0],
-        "l1_ratios": [0.5, 0.9],
-        "cv": 3,
-        "max_iter": 500,
+        "Cs": [0.001, 0.01, 0.1, 1.0, 10.0],
+        "cv": 5,
+        "penalty": "l1",
+        "solver": "saga",
+        "scoring": "neg_log_loss",
+        "class_weight": "balanced",
+        "max_iter": 5000,
         "n_jobs": None,
+        "random_state": 42,
     }
 
 
@@ -38,13 +42,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--metadata", default="data/dummy_metadata.csv", help="Path to the metadata table.")
     parser.add_argument(
         "--remove-features",
-        default="data/dummy_remove_features.txt",
-        help="Feature list file containing names to drop.",
+        help="Optional feature list file containing names to drop.",
     )
     parser.add_argument(
         "--keep-features",
-        default="data/dummy_keep_features.txt",
-        help="Feature list file containing the whitelist features.",
+        help="Optional feature list file containing the whitelist features.",
     )
     parser.add_argument(
         "--label-column",
@@ -52,7 +54,7 @@ def parse_args() -> argparse.Namespace:
         help="Label column present in the metadata table.",
     )
     parser.add_argument("--output-dir", default="outputs/workflow_cli", help="Where to store generated artifacts.")
-    parser.add_argument("--cv-splits", type=int, default=3, help="Number of cross-validation folds.")
+    parser.add_argument("--cv-splits", type=int, default=5, help="Number of outer cross-validation folds.")
     parser.add_argument(
         "--binary-labels",
         nargs=2,
@@ -85,8 +87,8 @@ def main() -> None:
 
     expression = pd.read_csv(args.expression)
     metadata = pd.read_csv(args.metadata)
-    remove_features = load_feature_list(args.remove_features)
-    keep_features = load_feature_list(args.keep_features)
+    remove_features = load_feature_list(args.remove_features) if args.remove_features else None
+    keep_features = load_feature_list(args.keep_features) if args.keep_features else None
 
     logistic_kwargs = _default_logistic_kwargs()
     output_dir = ensure_output_dir(args.output_dir)
@@ -107,18 +109,26 @@ def main() -> None:
     predictions = save_predictions_table(artifacts, output_dir)
     shap_table = export_shap_summaries(artifacts, output_dir)
 
+    inputs_section = {
+        "expression_path": str(Path(args.expression).resolve()),
+        "metadata_path": str(Path(args.metadata).resolve()),
+    }
+    if args.remove_features:
+        inputs_section["remove_features_path"] = str(Path(args.remove_features).resolve())
+    if args.keep_features:
+        inputs_section["keep_features_path"] = str(Path(args.keep_features).resolve())
+
+    filters_section = {
+        "add_back_features": ["feature_signal_partner"],
+    }
+    if remove_features is not None:
+        filters_section["remove_features"] = remove_features
+    if keep_features is not None:
+        filters_section["keep_features"] = keep_features
+
     config_data = {
-        "inputs": {
-            "expression_path": str(Path(args.expression).resolve()),
-            "metadata_path": str(Path(args.metadata).resolve()),
-            "remove_features_path": str(Path(args.remove_features).resolve()),
-            "keep_features_path": str(Path(args.keep_features).resolve()),
-        },
-        "filters": {
-            "remove_features": remove_features,
-            "keep_features": keep_features,
-            "add_back_features": ["feature_signal_partner"],
-        },
+        "inputs": inputs_section,
+        "filters": filters_section,
         "cross_validation": {
             "splits": args.cv_splits,
             "shuffle": True,

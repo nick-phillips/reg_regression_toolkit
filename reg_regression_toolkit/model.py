@@ -78,15 +78,21 @@ def _resolve_logistic_kwargs(
     y_train: np.ndarray,
 ) -> Dict[str, Any]:
     kwargs = dict(logistic_kwargs or {})
-    kwargs.setdefault("Cs", np.logspace(-5, 4, 50))
-    kwargs.setdefault("l1_ratios", [0.1])
+    kwargs.setdefault("Cs", np.logspace(-4, 4, 20))
+    kwargs.setdefault("cv", 5)
     kwargs.setdefault("scoring", "neg_log_loss")
-    kwargs.setdefault("max_iter", 10000)
+    kwargs.setdefault("max_iter", 5000)
     kwargs.setdefault("class_weight", "balanced")
     kwargs.setdefault("solver", "saga")
     kwargs.setdefault("n_jobs", None)
     kwargs.setdefault("random_state", 42)
-    kwargs.setdefault("penalty", "elasticnet")
+    kwargs.setdefault("penalty", "l1")
+
+    penalty = kwargs.get("penalty")
+    if penalty == "elasticnet":
+        kwargs.setdefault("l1_ratios", [0.5])
+    else:
+        kwargs.pop("l1_ratios", None)
 
     return kwargs
 
@@ -97,7 +103,7 @@ def fit_logistic_regression_cv(
     *,
     logistic_kwargs: Optional[Dict[str, Any]] = None,
 ) -> LogisticRegressionCV:
-    """Fit an elastic-net logistic regression model with cross-validation."""
+    """Fit an L1-regularized logistic regression model with cross-validation."""
 
     kwargs = _resolve_logistic_kwargs(logistic_kwargs, y_train)
     model = LogisticRegressionCV(**kwargs)
@@ -110,7 +116,7 @@ def cross_validate_logistic_regression(
     y: np.ndarray,
     *,
     ids: Optional[np.ndarray] = None,
-    cv_splits: int = 10,
+    cv_splits: int = 5,
     scaler: Optional[BaseEstimator] = None,
     logistic_kwargs: Optional[Dict[str, Any]] = None,
     random_state: int = 42,

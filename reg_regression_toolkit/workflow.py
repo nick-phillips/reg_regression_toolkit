@@ -103,7 +103,7 @@ def run_workflow(
     remove_features: Optional[Sequence[Iterable[str] | str]] = None,
     keep_features: Optional[Sequence[Iterable[str] | str]] = None,
     add_back_features: Optional[Sequence[str]] = None,
-    cv_splits: int = 10,
+    cv_splits: int = 5,
     scaler: Optional[BaseEstimator] = None,
     logistic_kwargs: Optional[Dict[str, object]] = None,
     random_state: int = 42,

@@ -6,7 +6,7 @@
 
 - Data reshaping utilities for expression matrices
 - Configurable feature filtering based on include/exclude feature lists
-- Cross-validated elastic-net logistic regression with standardized preprocessing
+- Default 5-fold nested cross-validation for an L1-regularized logistic regression classifier with standardized preprocessing
 - Support for binary and multi-class classification via `scikit-learn`
 - Optional SHAP value computation for linear models
 - Coefficient aggregation utilities to summarize feature importance

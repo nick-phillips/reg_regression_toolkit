@@ -16,6 +16,19 @@ def _filter_lists():
     return remove_features, keep_features
 
 
+def _logistic_kwargs():
+    return {
+        "Cs": [0.1, 1.0],
+        "cv": 3,
+        "max_iter": 500,
+        "n_jobs": None,
+        "penalty": "l1",
+        "solver": "saga",
+        "scoring": "neg_log_loss",
+        "class_weight": "balanced",
+    }
+
+
 def test_sequential_filters_roundtrip():
     expression, _ = _load_dummy_frames()
     remove_features, keep_features = _filter_lists()
@@ -44,13 +57,7 @@ def test_workflow_without_filter_config():
         label_column="Sample_type",
         filter_config=None,
         cv_splits=3,
-        logistic_kwargs={
-            "Cs": [0.1, 1.0],
-            "l1_ratios": [0.5, 0.9],
-            "cv": 3,
-            "max_iter": 500,
-            "n_jobs": None,
-        },
+        logistic_kwargs=_logistic_kwargs(),
     )
 
     assert set(artifacts.result.classes_) == {0, 1, 2}
@@ -72,13 +79,7 @@ def test_filter_config_still_supported():
         label_column="Sample_type",
         filter_config=config,
         cv_splits=3,
-        logistic_kwargs={
-            "Cs": [0.1, 1.0],
-            "l1_ratios": [0.5, 0.9],
-            "cv": 3,
-            "max_iter": 500,
-            "n_jobs": None,
-        },
+        logistic_kwargs=_logistic_kwargs(),
     )
 
     assert set(artifacts.result.classes_) == {0, 1, 2}
@@ -96,13 +97,7 @@ def test_signal_features_dominate_coefficients():
         keep_features=keep_features,
         add_back_features=("feature_signal_partner",),
         cv_splits=3,
-        logistic_kwargs={
-            "Cs": [0.1, 1.0],
-            "l1_ratios": [0.5, 0.9],
-            "cv": 3,
-            "max_iter": 500,
-            "n_jobs": None,
-        },
+        logistic_kwargs=_logistic_kwargs(),
     )
 
     summary = artifacts.coefficient_summary
@@ -129,13 +124,7 @@ def test_binary_workflow_and_roc_curve():
         keep_features=keep_features,
         add_back_features=("feature_signal_partner",),
         cv_splits=3,
-        logistic_kwargs={
-            "Cs": [0.1, 1.0],
-            "l1_ratios": [0.5, 0.9],
-            "cv": 3,
-            "max_iter": 500,
-            "n_jobs": None,
-        },
+        logistic_kwargs=_logistic_kwargs(),
     )
 
     assert set(artifacts.result.classes_) == {0, 1}
