@@ -222,7 +222,7 @@ def export_shap_summaries(
         plt.savefig(output_path / "shap_summary.png", bbox_inches="tight")
         plt.close()
 
-    mean_abs_importance = aggregated_abs.mean(axis=0)
+    mean_abs_importance = np.asarray(aggregated_abs.mean(axis=0), dtype=float).reshape(-1)
     importance_table = (
         pd.DataFrame({"feature": feature_names, "mean_abs_shap": mean_abs_importance})
         .sort_values("mean_abs_shap", ascending=False)

@@ -63,4 +63,9 @@ def compute_linear_shap(
             )
         return concatenated
 
+    if isinstance(first_output, np.ndarray) and first_output.ndim == 3:
+        stacked = np.concatenate(shap_outputs, axis=0)
+        num_classes = stacked.shape[2]
+        return [stacked[:, :, idx] for idx in range(num_classes)]
+
     return np.concatenate(shap_outputs, axis=0)
