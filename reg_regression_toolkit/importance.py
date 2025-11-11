@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import List
 
 import numpy as np
+
 import pandas as pd
 
 from .model import CrossValidationResult
@@ -92,5 +93,3 @@ def summarize_coefficients(result: CrossValidationResult) -> pd.DataFrame:
     )
     df.reset_index(drop=True, inplace=True)
     return df
-
-

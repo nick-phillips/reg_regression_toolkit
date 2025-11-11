@@ -9,6 +9,7 @@ from typing import Dict, List, Sequence, Union
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import shap
 from sklearn.metrics import average_precision_score, precision_recall_curve, roc_curve, auc
 from sklearn.preprocessing import label_binarize
 
@@ -181,13 +182,6 @@ def export_shap_summaries(
     X_concat = np.vstack(artifacts.result.X_tests)
     feature_names = artifacts.result.feature_names
 
-    try:
-        import shap  # type: ignore
-    except ImportError as exc:  # pragma: no cover - surfaced earlier in compute_linear_shap
-        raise ImportError(
-            "shap must be installed to export SHAP summaries. Install the optional dependency via 'uv add shap'."
-        ) from exc
-
     if isinstance(shap_values, list):
         aggregated_abs = np.mean([np.abs(values) for values in shap_values], axis=0)
         overall_shap = np.mean(np.stack(shap_values, axis=0), axis=0)
@@ -273,5 +267,3 @@ __all__ = [
     "export_shap_summaries",
     "write_config_json",
 ]
-
-

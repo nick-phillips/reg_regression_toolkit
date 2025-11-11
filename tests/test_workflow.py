@@ -143,4 +143,3 @@ def test_binary_workflow_and_roc_curve():
     assert 0.0 <= roc_info["auc"] <= 1.0
     # Perfect separation is expected on the dummy dataset.
     assert roc_info["auc"] > 0.95
-

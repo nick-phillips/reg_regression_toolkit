@@ -160,5 +160,3 @@ def run_workflow(
         coefficient_summary=coefficient_summary,
         label_mapping={label: idx for label, idx in encoded.mapping.items()},
     )
-
-

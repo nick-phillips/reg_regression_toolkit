@@ -88,9 +88,6 @@ def _resolve_logistic_kwargs(
     kwargs.setdefault("random_state", 42)
     kwargs.setdefault("penalty", "elasticnet")
 
-    unique_classes = np.unique(y_train)
-    kwargs.setdefault("multi_class", "multinomial" if unique_classes.size > 2 else "auto")
-
     return kwargs
 
 

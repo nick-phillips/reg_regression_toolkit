@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Union
+from typing import List, Optional, Union
 
 import numpy as np
+import shap
 
 from .model import CrossValidationResult
-
-try:  # pragma: no cover - optional dependency is exercised via runtime use
-    import shap
-except ImportError as exc:  # pragma: no cover
-    raise ImportError(
-        "shap is required for explainability utilities. Install the optional dependency via 'uv add shap'."
-    ) from exc
 
 
 def _prepare_background(
