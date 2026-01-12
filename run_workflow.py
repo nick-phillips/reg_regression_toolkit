@@ -67,7 +67,22 @@ def parse_args() -> argparse.Namespace:
         default=42,
         help="Random seed forwarded to cross-validation and label encoding.",
     )
+    parser.add_argument(
+        "--use-other-metadata",
+        action="store_true",
+        help="If set, include all metadata columns as features. By default, only sample_id and the label column are used.",
+    )
     return parser.parse_args()
+
+
+def _filter_metadata_columns(
+    metadata: pd.DataFrame,
+    id_column: str,
+    label_column: str,
+) -> pd.DataFrame:
+    """Keep only the id and label columns from metadata."""
+    columns_to_keep = [col for col in [id_column, label_column] if col in metadata.columns]
+    return metadata[columns_to_keep].copy()
 
 
 def _subset_binary(
@@ -87,6 +102,11 @@ def main() -> None:
 
     expression = pd.read_csv(args.expression)
     metadata = pd.read_csv(args.metadata)
+
+    # By default, only use sample_id and label column from metadata
+    if not args.use_other_metadata:
+        metadata = _filter_metadata_columns(metadata, id_column="sample_id", label_column=args.label_column)
+
     remove_features = load_feature_list(args.remove_features) if args.remove_features else None
     keep_features = load_feature_list(args.keep_features) if args.keep_features else None
 
