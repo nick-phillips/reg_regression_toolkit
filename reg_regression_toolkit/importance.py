@@ -93,3 +93,51 @@ def summarize_coefficients(result: CrossValidationResult) -> pd.DataFrame:
     )
     df.reset_index(drop=True, inplace=True)
     return df
+
+
+@dataclass
+class FeatureImportanceRecord:
+    """Record capturing feature importance statistics for Random Forest."""
+
+    feature: str
+    mean_importance: float
+    std_importance: float
+    num_folds: int
+
+
+def summarize_feature_importances(result: CrossValidationResult) -> pd.DataFrame:
+    """Summarize feature importances across folds for Random Forest models.
+
+    Returns a DataFrame sorted by mean importance (descending).
+    """
+    storage: dict[str, List[float]] = {}
+
+    for model in result.models:
+        if not hasattr(model, "feature_importances_"):
+            raise ValueError("Model does not have feature_importances_ attribute. Use summarize_coefficients for linear models.")
+
+        importances = model.feature_importances_
+        for feature_idx, importance in enumerate(importances):
+            feature_name = result.feature_names[feature_idx]
+            storage.setdefault(feature_name, []).append(float(importance))
+
+    records: List[FeatureImportanceRecord] = []
+    for feature, values in storage.items():
+        values_array = np.asarray(values, dtype=float)
+        record = FeatureImportanceRecord(
+            feature=feature,
+            mean_importance=float(np.mean(values_array)),
+            std_importance=float(np.std(values_array)),
+            num_folds=len(values),
+        )
+        records.append(record)
+
+    if not records:
+        return pd.DataFrame(
+            columns=["feature", "mean_importance", "std_importance", "num_folds"]
+        )
+
+    df = pd.DataFrame(records)
+    df.sort_values("mean_importance", ascending=False, inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    return df

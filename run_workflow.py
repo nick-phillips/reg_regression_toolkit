@@ -31,7 +31,19 @@ def _default_logistic_kwargs() -> dict:
         "scoring": "neg_log_loss",
         "class_weight": "balanced",
         "max_iter": 5000,
-        "n_jobs": None,
+        "n_jobs": 64,
+        "random_state": 42,
+    }
+
+
+def _default_rf_kwargs() -> dict:
+    return {
+        "n_estimators": 500,
+        "max_depth": None,
+        "min_samples_split": 2,
+        "min_samples_leaf": 1,
+        "class_weight": "balanced",
+        "n_jobs": 64,
         "random_state": 42,
     }
 
@@ -72,6 +84,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="If set, include all metadata columns as features. By default, only sample_id and the label column are used.",
     )
+    parser.add_argument(
+        "--random-forest",
+        action="store_true",
+        help="Use Random Forest classifier instead of logistic regression.",
+    )
+    parser.add_argument(
+        "--n-jobs",
+        type=int,
+        default=64,
+        help="Number of parallel jobs for model training (-1 for all CPUs).",
+    )
     return parser.parse_args()
 
 
@@ -111,6 +134,13 @@ def main() -> None:
     keep_features = load_feature_list(args.keep_features) if args.keep_features else None
 
     logistic_kwargs = _default_logistic_kwargs()
+    rf_kwargs = _default_rf_kwargs()
+    
+    # Override n_jobs with CLI argument
+    logistic_kwargs["n_jobs"] = args.n_jobs
+    rf_kwargs["n_jobs"] = args.n_jobs
+    
+    model_type = "random_forest" if args.random_forest else "logistic"
     output_dir = ensure_output_dir(args.output_dir)
 
     artifacts = run_workflow(
@@ -122,6 +152,8 @@ def main() -> None:
         add_back_features=("feature_signal_partner",),
         cv_splits=args.cv_splits,
         logistic_kwargs=logistic_kwargs,
+        rf_kwargs=rf_kwargs,
+        model_type=model_type,
         random_state=args.random_state,
     )
 
@@ -146,6 +178,30 @@ def main() -> None:
     if keep_features is not None:
         filters_section["keep_features"] = keep_features
 
+    if model_type == "random_forest":
+        model_config = {
+            "type": "RandomForestClassifier",
+            "base_parameters": rf_kwargs,
+            "nested_cv": {
+                "inner_cv_folds": 3,
+                "n_iter": 50,
+                "param_grid": {
+                    "n_estimators": [100, 200, 300, 500, 800],
+                    "max_depth": [None, 5, 10, 15, 20, 30],
+                    "min_samples_split": [2, 5, 10, 20],
+                    "min_samples_leaf": [1, 2, 4, 8],
+                    "max_features": ["sqrt", "log2", 0.1, 0.2, 0.3, 0.5, None],
+                    "max_samples": [0.5, 0.7, 0.8, 0.9, None],
+                    "bootstrap": [True],
+                },
+            },
+        }
+    else:
+        model_config = {
+            "type": "LogisticRegressionCV",
+            "parameters": logistic_kwargs,
+        }
+
     config_data = {
         "inputs": inputs_section,
         "filters": filters_section,
@@ -154,10 +210,7 @@ def main() -> None:
             "shuffle": True,
             "random_state": args.random_state,
         },
-        "model": {
-            "type": "LogisticRegressionCV",
-            "parameters": logistic_kwargs,
-        },
+        "model": model_config,
         "output_dir": str(output_dir.resolve()),
     }
     write_config_json(config_data, output_dir)
@@ -182,6 +235,8 @@ def main() -> None:
             add_back_features=("feature_signal_partner",),
             cv_splits=args.cv_splits,
             logistic_kwargs=logistic_kwargs,
+            rf_kwargs=rf_kwargs,
+            model_type=model_type,
             random_state=args.random_state,
         )
         roc = evaluation.roc_curve_from_result(binary_artifacts.result, positive_label=binary_artifacts.result.classes_[1])

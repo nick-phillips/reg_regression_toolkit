@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, Optional, Sequence
+from typing import Dict, Iterable, Literal, Optional, Sequence
 
 import pandas as pd
 from sklearn.base import BaseEstimator
@@ -106,6 +106,11 @@ def run_workflow(
     cv_splits: int = 5,
     scaler: Optional[BaseEstimator] = None,
     logistic_kwargs: Optional[Dict[str, object]] = None,
+    rf_kwargs: Optional[Dict[str, object]] = None,
+    rf_param_grid: Optional[Dict[str, object]] = None,
+    rf_inner_cv: int = 3,
+    rf_n_iter: int = 50,
+    model_type: Literal["logistic", "random_forest"] = "logistic",
     random_state: int = 42,
     shuffle: bool = True,
 ) -> WorkflowArtifacts:
@@ -137,21 +142,40 @@ def run_workflow(
         id_column=id_column,
     )
 
-    result = model.cross_validate_logistic_regression(
-        X_df.to_numpy(),
-        y_series.to_numpy(),
-        ids=None if ids_series is None else ids_series.to_numpy(),
-        cv_splits=cv_splits,
-        scaler=scaler,
-        logistic_kwargs=logistic_kwargs,
-        random_state=random_state,
-        shuffle=shuffle,
-        feature_names=list(X_df.columns),
-    )
+    if model_type == "logistic":
+        result = model.cross_validate_logistic_regression(
+            X_df.to_numpy(),
+            y_series.to_numpy(),
+            ids=None if ids_series is None else ids_series.to_numpy(),
+            cv_splits=cv_splits,
+            scaler=scaler,
+            logistic_kwargs=logistic_kwargs,
+            random_state=random_state,
+            shuffle=shuffle,
+            feature_names=list(X_df.columns),
+        )
+        coefficient_summary = importance.summarize_coefficients(result)
+    elif model_type == "random_forest":
+        result = model.cross_validate_random_forest(
+            X_df.to_numpy(),
+            y_series.to_numpy(),
+            ids=None if ids_series is None else ids_series.to_numpy(),
+            cv_splits=cv_splits,
+            scaler=scaler,
+            rf_kwargs=rf_kwargs,
+            param_grid=rf_param_grid,
+            inner_cv=rf_inner_cv,
+            n_iter=rf_n_iter,
+            random_state=random_state,
+            shuffle=shuffle,
+            feature_names=list(X_df.columns),
+        )
+        coefficient_summary = importance.summarize_feature_importances(result)
+    else:
+        raise ValueError(f"Unknown model_type: {model_type}. Use 'logistic' or 'random_forest'.")
 
     predictions = evaluation.predictions_dataframe(result)
     fold_metrics = evaluation.fold_metrics_dataframe(result)
-    coefficient_summary = importance.summarize_coefficients(result)
 
     return WorkflowArtifacts(
         result=result,

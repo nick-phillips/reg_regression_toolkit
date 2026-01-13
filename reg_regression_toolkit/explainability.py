@@ -29,6 +29,25 @@ def _prepare_background(
     return data[indices]
 
 
+def _is_tree_model(model) -> bool:
+    """Check if the model is a tree-based model."""
+    tree_model_types = (
+        "RandomForestClassifier",
+        "RandomForestRegressor",
+        "GradientBoostingClassifier",
+        "GradientBoostingRegressor",
+        "XGBClassifier",
+        "XGBRegressor",
+        "LGBMClassifier",
+        "LGBMRegressor",
+        "DecisionTreeClassifier",
+        "DecisionTreeRegressor",
+        "ExtraTreesClassifier",
+        "ExtraTreesRegressor",
+    )
+    return type(model).__name__ in tree_model_types
+
+
 def compute_linear_shap(
     result: CrossValidationResult,
     *,
@@ -69,3 +88,61 @@ def compute_linear_shap(
         return [stacked[:, :, idx] for idx in range(num_classes)]
 
     return np.concatenate(shap_outputs, axis=0)
+
+
+def compute_tree_shap(
+    result: CrossValidationResult,
+) -> Union[np.ndarray, List[np.ndarray]]:
+    """Compute SHAP values for tree-based models using TreeExplainer.
+
+    Returns either a single array (binary case) or a list of arrays (multi-class case)
+    where each array corresponds to a class.
+    """
+
+    shap_outputs: List[Union[np.ndarray, List[np.ndarray]]] = []
+
+    for model, X_test in zip(result.models, result.X_tests):
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_test)
+        shap_outputs.append(shap_values)
+
+    first_output = shap_outputs[0]
+    if isinstance(first_output, list):
+        concatenated: List[np.ndarray] = []
+        num_classes = len(first_output)
+        for class_idx in range(num_classes):
+            concatenated.append(
+                np.concatenate(
+                    [fold_values[class_idx] for fold_values in shap_outputs],
+                    axis=0,
+                )
+            )
+        return concatenated
+
+    if isinstance(first_output, np.ndarray) and first_output.ndim == 3:
+        stacked = np.concatenate(shap_outputs, axis=0)
+        num_classes = stacked.shape[2]
+        return [stacked[:, :, idx] for idx in range(num_classes)]
+
+    return np.concatenate(shap_outputs, axis=0)
+
+
+def compute_shap(
+    result: CrossValidationResult,
+    *,
+    background: Optional[np.ndarray] = None,
+    background_fraction: float = 1.0,
+    random_state: int = 42,
+) -> Union[np.ndarray, List[np.ndarray]]:
+    """Compute SHAP values, auto-detecting the appropriate explainer type.
+
+    Uses TreeExplainer for tree-based models and LinearExplainer for linear models.
+    """
+    if result.models and _is_tree_model(result.models[0]):
+        return compute_tree_shap(result)
+    return compute_linear_shap(
+        result,
+        background=background,
+        background_fraction=background_fraction,
+        random_state=random_state,
+    )
