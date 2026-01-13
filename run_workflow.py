@@ -143,6 +143,16 @@ def main() -> None:
     model_type = "random_forest" if args.random_forest else "logistic"
     output_dir = ensure_output_dir(args.output_dir)
 
+    # Define nested CV parameters for Random Forest (v2 config - proven effective)
+    rf_param_grid = {
+        "n_estimators": [100, 300, 500],
+        "max_depth": [None, 10, 20, 30],
+        "min_samples_split": [2, 5, 10],
+        "min_samples_leaf": [1, 2, 4],
+    }
+    rf_inner_cv = 3
+    rf_n_iter = 20
+
     artifacts = run_workflow(
         expression,
         metadata_df=metadata,
@@ -153,6 +163,9 @@ def main() -> None:
         cv_splits=args.cv_splits,
         logistic_kwargs=logistic_kwargs,
         rf_kwargs=rf_kwargs,
+        rf_param_grid=rf_param_grid,
+        rf_inner_cv=rf_inner_cv,
+        rf_n_iter=rf_n_iter,
         model_type=model_type,
         random_state=args.random_state,
     )
@@ -183,17 +196,9 @@ def main() -> None:
             "type": "RandomForestClassifier",
             "base_parameters": rf_kwargs,
             "nested_cv": {
-                "inner_cv_folds": 3,
-                "n_iter": 50,
-                "param_grid": {
-                    "n_estimators": [100, 200, 300, 500, 800],
-                    "max_depth": [None, 5, 10, 15, 20, 30],
-                    "min_samples_split": [2, 5, 10, 20],
-                    "min_samples_leaf": [1, 2, 4, 8],
-                    "max_features": ["sqrt", "log2", 0.1, 0.2, 0.3, 0.5, None],
-                    "max_samples": [0.5, 0.7, 0.8, 0.9, None],
-                    "bootstrap": [True],
-                },
+                "inner_cv_folds": rf_inner_cv,
+                "n_iter": rf_n_iter,
+                "param_grid": rf_param_grid,
             },
         }
     else:
@@ -236,6 +241,9 @@ def main() -> None:
             cv_splits=args.cv_splits,
             logistic_kwargs=logistic_kwargs,
             rf_kwargs=rf_kwargs,
+            rf_param_grid=rf_param_grid,
+            rf_inner_cv=rf_inner_cv,
+            rf_n_iter=rf_n_iter,
             model_type=model_type,
             random_state=args.random_state,
         )
