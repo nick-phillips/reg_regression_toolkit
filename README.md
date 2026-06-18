@@ -1,6 +1,6 @@
 # reg_regression_toolkit
 
-`reg_regression_toolkit` provides reusable components for building regularized regression classification workflows. It draws inspiration from the original BLCA tumor classifier notebook and generalizes the pipeline to support both binary and multi-class scenarios.
+`reg_regression_toolkit` provides reusable components for building regularized regression and classification workflows. It draws inspiration from the original BLCA tumor classifier notebook and generalizes the pipeline to support both binary and multi-class scenarios.
 
 ## Features
 
